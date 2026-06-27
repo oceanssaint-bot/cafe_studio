@@ -1,0 +1,25 @@
+# dependencies / build output
+node_modules
+dist
+out
+release
+*.log
+.DS_Store
+
+# local databases & backups (NEVER commit business data)
+*.db
+*.db-journal
+*.sqlite
+
+# private business data — keep out of the repo
+2026/
+oceans_mall/
+gloria-data-backup/
+
+# build log contains real figures + a staff ID number (PII)
+BUILD_LOG.md
+
+# stray temp / screenshots
+*.err
+*.out
+*.tmp
