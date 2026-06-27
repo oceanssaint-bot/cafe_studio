@@ -2,11 +2,13 @@ import { useEffect, useState } from 'react'
 import ProgressBar from '../components/ProgressBar'
 import AlertsPanel from '../components/AlertsPanel'
 import { useNav } from '../context/NavContext'
+import { useActivity } from '../context/ActivityContext'
 import { currentPeriod, formatZar } from '../../../shared/defaults'
 import type { Store, StoreOverview, TaskStats } from '../../../shared/types'
 
 export default function StoreDashboard(): JSX.Element {
   const { navigate } = useNav()
+  const { run } = useActivity()
   const [store, setStore] = useState<Store | null>(null)
   const [periods, setPeriods] = useState<string[]>([])
   const [period, setPeriod] = useState<string>(currentPeriod())
@@ -43,7 +45,8 @@ export default function StoreDashboard(): JSX.Element {
     setBusy(true)
     setPackMsg(null)
     try {
-      const r = await window.gloria.store.exportPack(store.id, period)
+      const r = await run('Exporting store pack', () => window.gloria.store.exportPack(store.id, period))
+      if (!r) return
       if (r.cancelled) setPackMsg('Cancelled.')
       else if (r.error) setPackMsg(r.error)
       else setPackMsg(`Pack for ${r.period} saved — send it to Head Office. (${r.path})`)

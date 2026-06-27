@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import PeriodSelector from '../components/PeriodSelector'
+import { useActivity } from '../context/ActivityContext'
 import { currentPeriod, formatZar } from '../../../shared/defaults'
 import type { ReportData, ReportType, ExportResult } from '../../../shared/types'
 
@@ -17,6 +18,7 @@ export default function Reports(): JSX.Element {
   const [data, setData] = useState<ReportData | null>(null)
   const [busy, setBusy] = useState<Busy>(null)
   const [message, setMessage] = useState<string | null>(null)
+  const { run: track } = useActivity()
 
   useEffect(() => {
     let active = true
@@ -31,15 +33,14 @@ export default function Reports(): JSX.Element {
   async function run(kind: Busy, fn: () => Promise<ExportResult>): Promise<void> {
     setBusy(kind)
     setMessage(null)
-    try {
-      const res = await fn()
+    const res = await track('Generating report', fn)
+    if (res) {
       if (res.error) setMessage(`Export failed: ${res.error}`)
       else if (res.saved && res.path) setMessage(`Saved to ${res.path}`)
       else if (res.saved) setMessage('Print dialog opened.')
       else setMessage('Cancelled.')
-    } finally {
-      setBusy(null)
     }
+    setBusy(null)
   }
 
   return (

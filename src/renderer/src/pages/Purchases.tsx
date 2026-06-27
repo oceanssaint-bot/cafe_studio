@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useState } from 'react'
 import { formatZar } from '../../../shared/defaults'
 import { useStoreScope } from '../hooks/useStoreScope'
+import { useActivity } from '../context/ActivityContext'
 import type { StorePurchaseView } from '../../../shared/types'
 
 export default function Purchases(): JSX.Element {
   const { storeMode, oceansId } = useStoreScope()
+  const { run } = useActivity()
   const [stores, setStores] = useState<Array<{ storeId: number; storeName: string }>>([])
   const [storeId, setStoreId] = useState<number | null>(null)
   const [periods, setPeriods] = useState<string[]>([])
@@ -48,7 +50,8 @@ export default function Purchases(): JSX.Element {
     setBusy(true)
     setMsg(null)
     try {
-      const res = await window.gloria.purchases.import()
+      const res = await run('Importing purchases', () => window.gloria.purchases.import())
+      if (!res) return
       if (res.cancelled) setMsg('Cancelled.')
       else if (res.error) setMsg(res.error)
       else

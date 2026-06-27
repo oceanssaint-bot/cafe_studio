@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState, type ReactNode } from 'react'
+import { useActivity } from '../context/ActivityContext'
 import type { AusAccountView } from '../../../shared/types'
 
 const usd = (n: number): string =>
@@ -14,6 +15,7 @@ export default function GjcAus(): JSX.Element {
   const [view, setView] = useState<AusAccountView | null>(null)
   const [busy, setBusy] = useState(false)
   const [msg, setMsg] = useState<string | null>(null)
+  const { run } = useActivity()
 
   const refresh = useCallback(async (): Promise<void> => {
     setView(await window.gloria.aus.get(ledger))
@@ -27,7 +29,8 @@ export default function GjcAus(): JSX.Element {
     setBusy(true)
     setMsg(null)
     try {
-      const res = await window.gloria.aus.import()
+      const res = await run('Importing Aus ledgers', () => window.gloria.aus.import())
+      if (!res) return
       if (res.cancelled) setMsg('Cancelled.')
       else if (res.error) setMsg(res.error)
       else setMsg(`Imported ${res.linesImported} transactions from ${res.filesParsed} ledger(s).`)

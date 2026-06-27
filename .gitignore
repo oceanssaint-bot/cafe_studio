@@ -16,9 +16,6 @@ release
 oceans_mall/
 gloria-data-backup/
 
-# build log contains real figures + a staff ID number (PII)
-BUILD_LOG.md
-
 # stray temp / screenshots
 *.err
 *.out

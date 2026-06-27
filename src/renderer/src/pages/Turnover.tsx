@@ -2,10 +2,12 @@ import { useCallback, useEffect, useState } from 'react'
 import PeriodSelector from '../components/PeriodSelector'
 import { currentPeriod, formatZar } from '../../../shared/defaults'
 import { useStoreScope } from '../hooks/useStoreScope'
+import { useActivity } from '../context/ActivityContext'
 import type { TurnoverView, TurnoverImportSummary } from '../../../shared/types'
 
 export default function Turnover(): JSX.Element {
   const { storeMode, oceansId } = useStoreScope()
+  const { run } = useActivity()
   const [period, setPeriod] = useState<string>(currentPeriod())
   const [view, setView] = useState<TurnoverView | null>(null)
   const [busy, setBusy] = useState(false)
@@ -23,7 +25,8 @@ export default function Turnover(): JSX.Element {
     setBusy(true)
     setSummary(null)
     try {
-      const res = await window.gloria.turnover.import()
+      const res = await run('Importing turnover reports', () => window.gloria.turnover.import())
+      if (!res) return
       setSummary(res)
       await refresh()
     } finally {

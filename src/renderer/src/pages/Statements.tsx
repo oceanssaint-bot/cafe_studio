@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useState } from 'react'
+import { useActivity } from '../context/ActivityContext'
 import { formatZar } from '../../../shared/defaults'
 import type { StatementStoreRef, StatementView, ExportResult } from '../../../shared/types'
 
 export default function Statements(): JSX.Element {
+  const { run } = useActivity()
   const [stores, setStores] = useState<StatementStoreRef[]>([])
   const [storeId, setStoreId] = useState<number | null>(null)
   const [view, setView] = useState<StatementView | null>(null)
@@ -31,7 +33,8 @@ export default function Statements(): JSX.Element {
     setBusy(true)
     setMsg(null)
     try {
-      const res = await window.gloria.statements.import()
+      const res = await run('Importing statements', () => window.gloria.statements.import())
+      if (!res) return
       if (res.cancelled) setMsg('Cancelled.')
       else if (res.error) setMsg(res.error)
       else

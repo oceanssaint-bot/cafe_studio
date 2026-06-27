@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useState } from 'react'
+import { useActivity } from '../context/ActivityContext'
 import { formatZar } from '../../../shared/defaults'
 import type { StockReconView } from '../../../shared/types'
 
 const today = (): string => new Date().toISOString().slice(0, 10)
 
 export default function StockReconPanel(): JSX.Element {
+  const { run } = useActivity()
   const [view, setView] = useState<StockReconView | null>(null)
   const [asOf, setAsOf] = useState<string>(today())
   const [busy, setBusy] = useState<null | 'sheets' | 'invoices' | 'export'>(null)
@@ -22,7 +24,8 @@ export default function StockReconPanel(): JSX.Element {
     setBusy('sheets')
     setMsg(null)
     try {
-      const r = await window.gloria.stockRecon.importSheets()
+      const r = await run('Importing stock counts', () => window.gloria.stockRecon.importSheets())
+      if (!r) return
       if (r.cancelled) setMsg('Cancelled.')
       else if (r.error) setMsg(r.error)
       else setMsg(`Imported ${r.sheets} stock count(s), ${r.lines} items. Latest: ${r.latestDate}.`)
@@ -35,7 +38,8 @@ export default function StockReconPanel(): JSX.Element {
     setBusy('invoices')
     setMsg(null)
     try {
-      const r = await window.gloria.stockRecon.importInvoices()
+      const r = await run('Importing stock-out invoices', () => window.gloria.stockRecon.importInvoices())
+      if (!r) return
       if (r.cancelled) setMsg('Cancelled.')
       else if (r.error) setMsg(r.error)
       else
@@ -50,7 +54,8 @@ export default function StockReconPanel(): JSX.Element {
   async function exportExcel(): Promise<void> {
     setBusy('export')
     try {
-      const r = await window.gloria.stockRecon.export(asOf)
+      const r = await run('Exporting stock take', () => window.gloria.stockRecon.export(asOf))
+      if (!r) return
       if (r.error) setMsg(r.error)
       else if (r.saved) setMsg(`Exported to ${r.path}`)
     } finally {

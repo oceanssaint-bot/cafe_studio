@@ -149,7 +149,9 @@ export async function extractWithClaude(filePath: string, mime: string): Promise
   if (!apiKey) {
     throw new Error('No Anthropic API key set. Add one in Settings to read receipts and invoices.')
   }
-  const client = new Anthropic({ apiKey })
+  // Bound the call so a slow/stuck request fails with a clear error instead of
+  // hanging the UI indefinitely (the SDK default is a long timeout with retries).
+  const client = new Anthropic({ apiKey, timeout: 120_000, maxRetries: 1 })
   const data = (await readFile(filePath)).toString('base64')
   const storeNames = listStores()
     .map((s) => s.name)

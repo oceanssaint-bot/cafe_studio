@@ -2,11 +2,13 @@ import { useCallback, useEffect, useState } from 'react'
 import ProgressBar from '../components/ProgressBar'
 import AlertsPanel from '../components/AlertsPanel'
 import { useNav } from '../context/NavContext'
+import { useActivity } from '../context/ActivityContext'
 import { currentPeriod, periodLabel, formatZar } from '../../../shared/defaults'
 import type { DbStatus, TaskStats, ActivityItem, PendingInvoice } from '../../../shared/types'
 
 export default function Dashboard(): JSX.Element {
   const { navigate } = useNav()
+  const { run } = useActivity()
   const [status, setStatus] = useState<DbStatus | null>(null)
   const [stats, setStats] = useState<TaskStats | null>(null)
   const [activity, setActivity] = useState<ActivityItem[] | null>(null)
@@ -49,34 +51,29 @@ export default function Dashboard(): JSX.Element {
   async function exportApproved(): Promise<void> {
     setSending(true)
     setSendMsg(null)
-    try {
-      const res = await window.gloria.royalty.exportApproved()
-      if (res.cancelled) setSendMsg('Cancelled.')
-      else if (res.error) setSendMsg(`Exported ${res.count} before error: ${res.error}`)
-      else if (res.count === 0) setSendMsg('Nothing to export.')
-      else setSendMsg(`Exported ${res.count} invoice PDF(s) and opened the folder — ready to email.`)
-      loadQueues()
-    } finally {
-      setSending(false)
-    }
+    const res = await run('Exporting invoice PDFs', () => window.gloria.royalty.exportApproved())
+    setSending(false)
+    if (!res) return
+    if (res.cancelled) setSendMsg('Cancelled.')
+    else if (res.error) setSendMsg(`Exported ${res.count} before error: ${res.error}`)
+    else if (res.count === 0) setSendMsg('Nothing to export.')
+    else setSendMsg(`Exported ${res.count} invoice PDF(s) and opened the folder — ready to email.`)
+    loadQueues()
   }
   async function emailApproved(): Promise<void> {
     setSending(true)
     setSendMsg(null)
-    try {
-      const res = await window.gloria.royalty.emailApproved()
-      if (res.cancelled) setSendMsg('Cancelled.')
-      else if (res.error) setSendMsg(`Exported ${res.exported} before error: ${res.error}`)
-      else {
-        let m = `Exported ${res.exported} PDF(s), opened ${res.drafted} email draft(s) — attach the PDFs from the folder.`
-        if (res.missingEmail.length)
-          m += ` No billing email for: ${res.missingEmail.join(', ')} (add it in Settings).`
-        setSendMsg(m)
-      }
-      loadQueues()
-    } finally {
-      setSending(false)
+    const res = await run('Exporting & drafting emails', () => window.gloria.royalty.emailApproved())
+    setSending(false)
+    if (!res) return
+    if (res.cancelled) setSendMsg('Cancelled.')
+    else {
+      let m = `Exported ${res.exported} PDF(s), opened ${res.drafted} email draft(s) — attach the PDFs from the folder.`
+      if (res.missingEmail.length)
+        m += ` No billing email for: ${res.missingEmail.join(', ')} (add it in Settings).`
+      setSendMsg(m)
     }
+    loadQueues()
   }
 
   return (

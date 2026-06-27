@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useState } from 'react'
 import DocumentReview from './documents/DocumentReview'
+import Spinner from '../components/Spinner'
 import { useNav } from '../context/NavContext'
+import { useActivity } from '../context/ActivityContext'
 import { formatZar } from '../../../shared/defaults'
 import type { AppDocument, Store, ApiKeyStatus } from '../../../shared/types'
 
@@ -20,10 +22,12 @@ const STATUS_LABEL: Record<AppDocument['status'], string> = {
 
 export default function Documents(): JSX.Element {
   const { navigate } = useNav()
+  const { run } = useActivity()
   const [docs, setDocs] = useState<AppDocument[]>([])
   const [stores, setStores] = useState<Store[]>([])
   const [selectedId, setSelectedId] = useState<number | null>(null)
   const [uploading, setUploading] = useState(false)
+  const [elapsed, setElapsed] = useState(0)
   const [keyStatus, setKeyStatus] = useState<ApiKeyStatus | null>(null)
 
   const refresh = useCallback(async (): Promise<void> => {
@@ -38,15 +42,21 @@ export default function Documents(): JSX.Element {
     window.gloria.apikey.status().then(setKeyStatus)
   }, [refresh])
 
+  // Live elapsed-seconds counter so the user can see the AI read is actually working.
+  useEffect(() => {
+    if (!uploading) return
+    setElapsed(0)
+    const t = setInterval(() => setElapsed((e) => e + 1), 1000)
+    return () => clearInterval(t)
+  }, [uploading])
+
   async function upload(): Promise<void> {
     setUploading(true)
-    try {
-      const created = await window.gloria.documents.upload()
-      await refresh()
-      if (created.length > 0) setSelectedId(created[0].id)
-    } finally {
-      setUploading(false)
-    }
+    const created = await run('Reading document(s) with AI', () => window.gloria.documents.upload())
+    setUploading(false)
+    if (!created) return
+    await refresh()
+    if (created.length > 0) setSelectedId(created[0].id)
   }
 
   async function remove(id: number): Promise<void> {
@@ -72,11 +82,27 @@ export default function Documents(): JSX.Element {
           type="button"
           onClick={upload}
           disabled={uploading}
-          className="rounded-md bg-gloria-accent px-4 py-2 text-sm font-medium text-white hover:bg-gloria-brown disabled:opacity-50"
+          className="inline-flex items-center gap-2 rounded-md bg-gloria-accent px-4 py-2 text-sm font-medium text-white hover:bg-gloria-brown disabled:opacity-50"
         >
+          {uploading && <Spinner />}
           {uploading ? 'Reading…' : 'Upload files'}
         </button>
       </header>
+
+      {uploading && (
+        <div className="mb-4 flex items-center gap-3 rounded-lg border border-gloria-accent/40 bg-gloria-accent/5 px-4 py-3">
+          <Spinner className="h-5 w-5 text-gloria-accent" />
+          <div>
+            <p className="text-sm font-medium text-gloria-brown dark:text-gloria-cream">
+              Reading your document(s) with AI… {elapsed}s
+            </p>
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              Claude is extracting the figures — this usually takes 20–60 seconds. Keep the app open; you
+              can carry on working elsewhere.
+            </p>
+          </div>
+        </div>
+      )}
 
       {keyStatus && !keyStatus.set && (
         <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-900/50 dark:bg-amber-900/20 dark:text-amber-200">

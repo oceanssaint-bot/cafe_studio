@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import PagePlaceholder from '../components/PagePlaceholder'
 import { useTheme } from '../context/ThemeContext'
+import { useActivity } from '../context/ActivityContext'
 import { formatZar } from '../../../shared/defaults'
 import type { AppInfo, DbStatus, ApiKeyStatus, ImportSummary, Store } from '../../../shared/types'
 
@@ -12,6 +13,7 @@ const SHORTCUTS: Array<{ keys: string; action: string }> = [
 
 export default function Settings(): JSX.Element {
   const { theme, toggle } = useTheme()
+  const { run } = useActivity()
   const [info, setInfo] = useState<AppInfo | null>(null)
   const [status, setStatus] = useState<DbStatus | null>(null)
   const [busy, setBusy] = useState<null | 'backup' | 'restore'>(null)
@@ -45,38 +47,29 @@ export default function Settings(): JSX.Element {
   async function runImport(): Promise<void> {
     setImporting(true)
     setImportResult(null)
-    try {
-      const result = await window.gloria.importArchive()
-      setImportResult(result)
-    } finally {
-      setImporting(false)
-    }
+    const result = await run('Importing from archive', () => window.gloria.importArchive())
+    if (result) setImportResult(result)
+    setImporting(false)
   }
 
   async function backup(): Promise<void> {
     setBusy('backup')
     setMessage(null)
-    try {
-      const res = await window.gloria.backup.create()
-      if (res.error) setMessage(`Backup failed: ${res.error}`)
-      else if (res.saved && res.path) setMessage(`Backed up to ${res.path}`)
-      else setMessage('Backup cancelled.')
-    } finally {
-      setBusy(null)
-    }
+    const res = await run('Backing up database', () => window.gloria.backup.create())
+    if (res?.error) setMessage(`Backup failed: ${res.error}`)
+    else if (res?.saved && res.path) setMessage(`Backed up to ${res.path}`)
+    else if (res) setMessage('Backup cancelled.')
+    setBusy(null)
   }
 
   async function restore(): Promise<void> {
     setBusy('restore')
     setMessage(null)
-    try {
-      const res = await window.gloria.backup.restore()
-      // On success the app relaunches, so this only returns on cancel/error.
-      if (res.error) setMessage(`Restore failed: ${res.error}`)
-      else if (!res.saved) setMessage('Restore cancelled.')
-    } finally {
-      setBusy(null)
-    }
+    // On success the app relaunches, so this only returns on cancel/error.
+    const res = await run('Restoring database', () => window.gloria.backup.restore())
+    if (res?.error) setMessage(`Restore failed: ${res.error}`)
+    else if (res && !res.saved) setMessage('Restore cancelled.')
+    setBusy(null)
   }
 
   return (

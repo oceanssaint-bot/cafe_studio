@@ -2,12 +2,14 @@ import { useCallback, useEffect, useState } from 'react'
 import PeriodSelector from '../components/PeriodSelector'
 import { currentPeriod, formatZar } from '../../../shared/defaults'
 import { useStoreScope } from '../hooks/useStoreScope'
+import { useActivity } from '../context/ActivityContext'
 import type { LedgerEntity, PayrollView } from '../../../shared/types'
 
 const blank = { employee: '', emp_no: '', gross: '', net: '' }
 
 export default function Payroll(): JSX.Element {
   const { storeMode, oceansId } = useStoreScope()
+  const { run } = useActivity()
   const [entities, setEntities] = useState<LedgerEntity[]>([])
   const [entityId, setEntityId] = useState<number>(0)
   const [period, setPeriod] = useState<string>(currentPeriod())
@@ -53,7 +55,8 @@ export default function Payroll(): JSX.Element {
     setBusy(true)
     setMsg(null)
     try {
-      const res = await window.gloria.payroll.importHours()
+      const res = await run('Importing staff hours', () => window.gloria.payroll.importHours())
+      if (!res) return
       if (res.cancelled) setMsg('Cancelled.')
       else if (res.error) setMsg(res.error)
       else

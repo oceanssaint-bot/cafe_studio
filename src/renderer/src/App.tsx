@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import Sidebar from './components/Sidebar'
 import SearchPalette from './components/SearchPalette'
+import ActivityToaster from './components/ActivityToaster'
 import { navForMode, type PageId } from './navigation'
 import { useNav } from './context/NavContext'
 import { useTheme } from './context/ThemeContext'
@@ -146,6 +147,7 @@ export default function App(): JSX.Element {
       </div>
 
       <SearchPalette open={searchOpen} onClose={() => setSearchOpen(false)} />
+      <ActivityToaster />
     </div>
   )
 }
