@@ -60,7 +60,10 @@ export default function StaffPage(): JSX.Element {
       email: edit.email,
       monthly_pay: edit.monthly_pay,
       notes: edit.notes,
-      active: edit.active
+      active: edit.active,
+      bank_name: edit.bank_name,
+      bank_account: edit.bank_account,
+      tax_number: edit.tax_number
     })
     setEdit(null)
     refresh()
@@ -115,7 +118,10 @@ export default function StaffPage(): JSX.Element {
                 email: '',
                 monthly_pay: 0,
                 notes: '',
-                active: 1
+                active: 1,
+                bank_name: '',
+                bank_account: '',
+                tax_number: ''
               })
             }
             className="rounded-md bg-gloria-accent px-3 py-2 text-sm font-medium text-white hover:bg-gloria-brown"
@@ -210,6 +216,11 @@ export default function StaffPage(): JSX.Element {
               </div>
               <Field label="Phone" value={edit.phone} onChange={(v) => setEdit({ ...edit, phone: v })} />
               <Field label="Email" value={edit.email} onChange={(v) => setEdit({ ...edit, email: v })} />
+              <Field label="Tax number" value={edit.tax_number} onChange={(v) => setEdit({ ...edit, tax_number: v })} />
+              <div className="flex gap-2">
+                <Field label="Bank" value={edit.bank_name} onChange={(v) => setEdit({ ...edit, bank_name: v })} />
+                <Field label="Account no." value={edit.bank_account} onChange={(v) => setEdit({ ...edit, bank_account: v })} />
+              </div>
               <Field label="Notes" value={edit.notes} onChange={(v) => setEdit({ ...edit, notes: v })} />
               <label className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
                 <input type="checkbox" checked={!!edit.active} onChange={(e) => setEdit({ ...edit, active: e.target.checked ? 1 : 0 })} />

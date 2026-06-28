@@ -28,6 +28,11 @@ import type {
   PayrollView,
   PayrollItem,
   PayrollInput,
+  PayRunLine,
+  PayRunResult,
+  PayRunPreviewRow,
+  Payslip,
+  Emp201,
   StaffHoursImportSummary,
   AusAccountView,
   AusImportSummary,
@@ -147,6 +152,24 @@ const api = {
     update: (input: PayrollInput): Promise<void> => ipcRenderer.invoke('payroll:update', input),
     remove: (id: number): Promise<void> => ipcRenderer.invoke('payroll:delete', id),
     importHours: (): Promise<StaffHoursImportSummary> => ipcRenderer.invoke('payroll:importHours')
+  },
+  payrun: {
+    staff: (storeId: number): Promise<Array<{ id: number; name: string; monthly_pay: number; dob: string }>> =>
+      ipcRenderer.invoke('payrun:staff', storeId),
+    run: (storeId: number, period: string, lines: PayRunLine[]): Promise<PayRunResult> =>
+      ipcRenderer.invoke('payrun:run', storeId, period, lines),
+    preview: (lines: PayRunLine[]): Promise<PayRunPreviewRow[]> =>
+      ipcRenderer.invoke('payrun:preview', lines),
+    slips: (storeId: number, period: string): Promise<Payslip[]> =>
+      ipcRenderer.invoke('payrun:slips', storeId, period),
+    periods: (storeId: number): Promise<string[]> => ipcRenderer.invoke('payrun:periods', storeId),
+    emp201: (storeId: number, period: string): Promise<Emp201> =>
+      ipcRenderer.invoke('payrun:emp201', storeId, period),
+    exportPayslip: (id: number): Promise<ExportResult> =>
+      ipcRenderer.invoke('payrun:exportPayslip', id),
+    printPayslip: (id: number): Promise<ExportResult> => ipcRenderer.invoke('payrun:printPayslip', id),
+    exportBatch: (storeId: number, period: string): Promise<BatchExportSummary> =>
+      ipcRenderer.invoke('payrun:exportBatch', storeId, period)
   },
   aus: {
     get: (ledger?: string): Promise<AusAccountView> => ipcRenderer.invoke('aus:get', ledger),

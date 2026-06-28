@@ -207,3 +207,17 @@ npm run dist           # package the .exe — ONLY at hand-over (see gotchas)
 - Documents (AI read): rich inline banner with live elapsed seconds ("Reading… 12s, usually 20–60s, keep app open") + spinner button. Verified live: banner + button + toaster all show during a real read.
 - Routed the slow ops through `run()`: archive import + backup/restore (Settings), turnover/purchases/payroll/statements/Aus imports, stock-recon import/export, royalty export+email & store-pack import (Dashboard), store-pack export (StoreDashboard), report exports.
 - Bug fixed: `extractWithClaude` had NO timeout → a slow API call hung the UI indefinitely (seen at 253s). Added `timeout 120s, maxRetries 1` so it fails into a clear error toast instead of spinning forever.
+
+### 2026-06-27 — Full payroll: SARS engine, payslips, pay run, EMP201 (v24)
+- **SARS tax engine** `services/sars-tax.ts` — 2025/26 PAYE (annualised, brackets + age rebates + threshold), UIF (1% capped at R17,712/mo), SDL (1%), age-from-DOB. Pure module, tables easy to update yearly.
+- **Migration v24:** staff gain `bank_name/bank_account/tax_number`; new `payslips` table (one per staff/period: gross, paye, uif, other, net, employer uif + sdl, earnings/deductions JSON; UNIQUE staff+period so re-runs update).
+- **Pay run** `repositories/payroll-run.ts` — `runPayroll` computes PAYE/UIF/SDL/net per active staff and stores payslips; `payRunStaff` (prefill gross from staff monthly_pay), `listPayslips`, `getEmp201` (PAYE + total UIF + SDL).
+- **Payslip PDF** `shared/payslip-html.ts` (BCEA: employer, employee, earnings, deductions, NET, employer contributions) + `export.ts` exportPayslipPdf / printPayslip / exportPayslipsBatch (folder of all PDFs). Staff page extended with bank/tax inputs.
+- **UI** `PayRunPanel.tsx` on the Payroll page (store mode): period, editable gross per staff, "Run payroll" → SARS calc, EMP201 cards, per-payslip View/PDF, Export-all.
+- **Verified:** pay run on the 4 Oceans staff — PAYE R0 (all below R95,750 threshold, correct), UIF 1%, EMP201 total R858.18. Computed nets matched the timesheet nets to the cent (Menzi R7,556.55, Ndlovu R7,600.17). Payslip PDF renders.
+- **Remaining (next):** IRP5 annual certificates, leave accrual/balances, EFT bank file, and splitting earnings (Sunday/OT/PH) from the timesheets instead of a single Basic line.
+- DB now at v24 / 27 tables.
+
+### 2026-06-27 — Payroll manual fallback + resilience note
+- Pay run is now **fully manual-capable**: PAYE, UIF and Other deductions are editable per employee with a live net; "Auto-calc PAYE/UIF" (SARS) just *fills* them and you can override any figure before saving. `PayRunLine` gained optional `paye`/`uif` (manual wins, else auto); added `previewPayroll`/`payrun:preview`.
+- Resilience: only the **document image/PDF reader** uses the Anthropic API. Everything else — SARS calc, pay run, payslips, all spreadsheet imports, reports, dashboards — runs **100% offline/local**, so an API outage never blocks payroll or data entry. Manual entry exists for Payroll, Staff, Stock, Menu, Cash-Up, Creditors/Debtors.

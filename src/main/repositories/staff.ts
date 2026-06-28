@@ -29,7 +29,7 @@ export function upsertStaff(input: StaffInput): Staff {
   const { dob, gender } = deriveFromIdNumber(input.id_number)
   if (input.id) {
     db.prepare(
-      `UPDATE staff SET name=?, id_number=?, occupation=?, status=?, dob=?, gender=?, phone=?, email=?, monthly_pay=?, notes=?, active=? WHERE id=?`
+      `UPDATE staff SET name=?, id_number=?, occupation=?, status=?, dob=?, gender=?, phone=?, email=?, monthly_pay=?, notes=?, active=?, bank_name=?, bank_account=?, tax_number=? WHERE id=?`
     ).run(
       input.name.trim(),
       input.id_number.trim(),
@@ -42,14 +42,17 @@ export function upsertStaff(input: StaffInput): Staff {
       input.monthly_pay,
       input.notes.trim(),
       input.active ? 1 : 0,
+      (input.bank_name ?? '').trim(),
+      (input.bank_account ?? '').trim(),
+      (input.tax_number ?? '').trim(),
       input.id
     )
     return db.prepare(`SELECT * FROM staff WHERE id = ?`).get(input.id) as Staff
   }
   const info = db
     .prepare(
-      `INSERT INTO staff (store_id, name, id_number, occupation, status, dob, gender, phone, email, monthly_pay, notes, active, created_at)
-       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`
+      `INSERT INTO staff (store_id, name, id_number, occupation, status, dob, gender, phone, email, monthly_pay, notes, active, bank_name, bank_account, tax_number, created_at)
+       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`
     )
     .run(
       input.store_id,
@@ -64,9 +67,16 @@ export function upsertStaff(input: StaffInput): Staff {
       input.monthly_pay,
       input.notes.trim(),
       input.active ? 1 : 0,
+      (input.bank_name ?? '').trim(),
+      (input.bank_account ?? '').trim(),
+      (input.tax_number ?? '').trim(),
       now()
     )
   return db.prepare(`SELECT * FROM staff WHERE id = ?`).get(Number(info.lastInsertRowid)) as Staff
+}
+
+export function getStaff(id: number): Staff | undefined {
+  return getDatabase().prepare(`SELECT * FROM staff WHERE id = ?`).get(id) as Staff | undefined
 }
 
 export function deleteStaff(id: number): void {
@@ -123,7 +133,10 @@ export function syncStaffFromPayroll(storeId: number): StaffSyncSummary {
         email: '',
         monthly_pay: g[0].gross,
         notes: `${months} months on record (from timesheets)`,
-        active: 1
+        active: 1,
+        bank_name: '',
+        bank_account: '',
+        tax_number: ''
       })
       added++
     }

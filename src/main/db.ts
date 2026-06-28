@@ -568,6 +568,36 @@ const migrations: Array<(database: Database.Database) => void> = [
       );
       CREATE INDEX IF NOT EXISTS idx_menusales ON menu_sales(store_id, period);
     `)
+  },
+  // v24: full payroll. Staff gain banking + tax fields; `payslips` is one
+  // processed pay record per staff per month (gross, auto-calc PAYE/UIF, other
+  // deductions, net + employer UIF/SDL for EMP201). earnings/deductions JSON hold
+  // the line breakdown for the printed payslip.
+  (database) => {
+    database.exec(`
+      ALTER TABLE staff ADD COLUMN bank_name TEXT NOT NULL DEFAULT '';
+      ALTER TABLE staff ADD COLUMN bank_account TEXT NOT NULL DEFAULT '';
+      ALTER TABLE staff ADD COLUMN tax_number TEXT NOT NULL DEFAULT '';
+      CREATE TABLE IF NOT EXISTS payslips (
+        id               INTEGER PRIMARY KEY AUTOINCREMENT,
+        store_id         INTEGER REFERENCES stores(id) ON DELETE CASCADE,
+        staff_id         INTEGER REFERENCES staff(id) ON DELETE SET NULL,
+        staff_name       TEXT NOT NULL DEFAULT '',
+        period           TEXT NOT NULL,
+        gross            REAL NOT NULL DEFAULT 0,
+        paye             REAL NOT NULL DEFAULT 0,
+        uif              REAL NOT NULL DEFAULT 0,
+        other_deductions REAL NOT NULL DEFAULT 0,
+        net              REAL NOT NULL DEFAULT 0,
+        uif_employer     REAL NOT NULL DEFAULT 0,
+        sdl              REAL NOT NULL DEFAULT 0,
+        earnings         TEXT NOT NULL DEFAULT '[]',
+        deductions       TEXT NOT NULL DEFAULT '[]',
+        created_at       TEXT NOT NULL,
+        UNIQUE (staff_id, period)
+      );
+      CREATE INDEX IF NOT EXISTS idx_payslips ON payslips(store_id, period);
+    `)
   }
 ]
 

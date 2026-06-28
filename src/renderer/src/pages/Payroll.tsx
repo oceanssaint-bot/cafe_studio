@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import PeriodSelector from '../components/PeriodSelector'
+import PayRunPanel from './PayRunPanel'
 import { currentPeriod, formatZar } from '../../../shared/defaults'
 import { useStoreScope } from '../hooks/useStoreScope'
 import { useActivity } from '../context/ActivityContext'
@@ -174,6 +175,8 @@ export default function Payroll(): JSX.Element {
           </tbody>
         </table>
       </div>
+
+      <PayRunPanel />
     </div>
   )
 }

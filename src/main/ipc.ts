@@ -49,6 +49,14 @@ import { importStockInvoicesDialog } from './services/import-stock-invoices'
 import { getStockReconciliation } from './repositories/stock-recon'
 import { getStoreOverview, listStorePeriods } from './repositories/store-overview'
 import { listStaff, upsertStaff, deleteStaff, syncStaffFromPayroll } from './repositories/staff'
+import {
+  payRunStaff,
+  runPayroll,
+  previewPayroll,
+  listPayslips,
+  listPayslipPeriods,
+  getEmp201
+} from './repositories/payroll-run'
 import { getAlerts } from './repositories/alerts'
 import { listMenuItems, upsertMenuItem, deleteMenuItem, getRecipe, setRecipe } from './repositories/menu'
 import { getStoreTrends } from './repositories/trends'
@@ -92,7 +100,10 @@ import {
   printInvoice,
   exportApprovedInvoices,
   emailApprovedInvoices,
-  exportStockReconExcel
+  exportStockReconExcel,
+  exportPayslipPdf,
+  printPayslip,
+  exportPayslipsBatch
 } from './export'
 import { searchAll } from './repositories/search'
 import { recentActivity } from './repositories/activity'
@@ -267,6 +278,21 @@ export function registerIpcHandlers(): void {
   // Daily Command Center alerts
   ipcMain.handle('alerts:get', (_e, mode: 'store' | 'franchise', storeId: number | null, period: string) =>
     getAlerts(mode, storeId, period)
+  )
+
+  // Payroll — pay run, payslips, statutory
+  ipcMain.handle('payrun:staff', (_e, storeId: number) => payRunStaff(storeId))
+  ipcMain.handle('payrun:run', (_e, storeId: number, period: string, lines) =>
+    runPayroll(storeId, period, lines)
+  )
+  ipcMain.handle('payrun:preview', (_e, lines) => previewPayroll(lines))
+  ipcMain.handle('payrun:slips', (_e, storeId: number, period: string) => listPayslips(storeId, period))
+  ipcMain.handle('payrun:periods', (_e, storeId: number) => listPayslipPeriods(storeId))
+  ipcMain.handle('payrun:emp201', (_e, storeId: number, period: string) => getEmp201(storeId, period))
+  ipcMain.handle('payrun:exportPayslip', (_e, id: number) => exportPayslipPdf(id))
+  ipcMain.handle('payrun:printPayslip', (_e, id: number) => printPayslip(id))
+  ipcMain.handle('payrun:exportBatch', (_e, storeId: number, period: string) =>
+    exportPayslipsBatch(storeId, period)
   )
 
   // Staff register

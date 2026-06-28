@@ -714,6 +714,9 @@ export interface Staff {
   monthly_pay: number
   notes: string
   active: number // 0 | 1
+  bank_name: string
+  bank_account: string
+  tax_number: string
 }
 
 export interface StaffInput {
@@ -728,11 +731,70 @@ export interface StaffInput {
   monthly_pay: number
   notes: string
   active: number
+  bank_name: string
+  bank_account: string
+  tax_number: string
 }
 
 export interface StaffSyncSummary {
   added: number
   total: number
+}
+
+// --- Payroll (pay run, payslips, statutory) ---
+
+export interface PayslipLine {
+  label: string
+  amount: number
+}
+
+export interface Payslip {
+  id: number
+  store_id: number | null
+  staff_id: number | null
+  staff_name: string
+  period: string
+  gross: number
+  paye: number
+  uif: number
+  other_deductions: number
+  net: number
+  uif_employer: number
+  sdl: number
+  earnings: PayslipLine[]
+  deductions: PayslipLine[]
+}
+
+/** One staff member's input to a pay run. PAYE/UIF auto-calc unless given (manual override). */
+export interface PayRunLine {
+  staff_id: number
+  gross: number
+  paye?: number
+  uif?: number
+  other_deductions?: number
+}
+
+export interface PayRunPreviewRow {
+  staff_id: number
+  paye: number
+  uif: number
+}
+
+export interface PayRunResult {
+  ok: boolean
+  period: string
+  count: number
+  totals: { gross: number; paye: number; uif: number; other: number; net: number }
+}
+
+export interface Emp201 {
+  period: string
+  periodLabel: string
+  paye: number
+  uifTotal: number // employee + employer
+  sdl: number
+  total: number
+  staffCount: number
 }
 
 // --- Store monthly pack (store → Head Office hand-off) ---

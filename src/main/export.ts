@@ -5,6 +5,9 @@ import { getReportData } from './repositories/reports'
 import { getStatement, getStatementAccount } from './repositories/statements'
 import { getRoyaltyInvoice, listApprovedUnsent, markInvoicesSent } from './repositories/royalties'
 import { getStore } from './repositories/stores'
+import { getPayslip, listPayslips } from './repositories/payroll-run'
+import { getStaff } from './repositories/staff'
+import { renderPayslipHtml } from '../shared/payslip-html'
 import { getStockReconciliation } from './repositories/stock-recon'
 import * as XLSX from 'xlsx'
 import { formatZar } from '../shared/defaults'
@@ -266,6 +269,76 @@ export async function emailApprovedInvoices(): Promise<EmailDraftSummary> {
       folder,
       missingEmail: [...new Set(missingEmail)]
     }
+  } finally {
+    win.destroy()
+  }
+}
+
+// --- Payslips ---
+
+function payslipHtmlFor(id: number): { name: string; html: string } | null {
+  const p = getPayslip(id)
+  if (!p) return null
+  const staff = p.staff_id ? getStaff(p.staff_id) ?? null : null
+  const store = p.store_id ? getStore(p.store_id) : undefined
+  return { name: `${p.staff_name}-${p.period}`, html: renderPayslipHtml(p, staff, store?.name ?? 'Cafe Studio') }
+}
+
+export async function exportPayslipPdf(id: number): Promise<ExportResult> {
+  const r = payslipHtmlFor(id)
+  if (!r) return { saved: false, error: 'Payslip not found.' }
+  const { canceled, filePath } = await dialog.showSaveDialog({
+    title: 'Export payslip as PDF',
+    defaultPath: join(app.getPath('documents'), `Payslip-${r.name.replace(/[^a-z0-9]+/gi, '-')}.pdf`),
+    filters: [{ name: 'PDF', extensions: ['pdf'] }]
+  })
+  if (canceled || !filePath) return { saved: false }
+  const win = new BrowserWindow({ show: false, webPreferences: { sandbox: false } })
+  try {
+    await win.loadURL(htmlDataUrl(r.html))
+    const pdf = await win.webContents.printToPDF({ printBackground: true, margins: { top: 0.5, bottom: 0.5, left: 0.5, right: 0.5 } })
+    await writeFile(filePath, pdf)
+    return { saved: true, path: filePath }
+  } catch (err) {
+    return { saved: false, error: err instanceof Error ? err.message : String(err) }
+  } finally {
+    win.destroy()
+  }
+}
+
+export async function printPayslip(id: number): Promise<ExportResult> {
+  const r = payslipHtmlFor(id)
+  if (!r) return { saved: false, error: 'Payslip not found.' }
+  const win = new BrowserWindow({ width: 820, height: 1000, title: `Payslip — ${r.name}`, autoHideMenuBar: true, webPreferences: { sandbox: false } })
+  await win.loadURL(htmlDataUrl(r.html))
+  return { saved: true }
+}
+
+/** Batch: export every payslip for a period as PDFs into a chosen folder, then open it. */
+export async function exportPayslipsBatch(storeId: number, period: string): Promise<BatchExportSummary> {
+  const slips = listPayslips(storeId, period)
+  if (slips.length === 0) return { ok: true, count: 0, folder: '' }
+  const { canceled, filePaths } = await dialog.showOpenDialog({
+    title: `Export ${slips.length} payslips for ${period} into a folder`,
+    properties: ['openDirectory', 'createDirectory']
+  })
+  if (canceled || filePaths.length === 0) return { ok: false, cancelled: true, count: 0, folder: '' }
+  const folder = filePaths[0]
+  const win = new BrowserWindow({ show: false, webPreferences: { sandbox: false } })
+  let count = 0
+  try {
+    for (const s of slips) {
+      const r = payslipHtmlFor(s.id)
+      if (!r) continue
+      await win.loadURL(htmlDataUrl(r.html))
+      const pdf = await win.webContents.printToPDF({ printBackground: true, margins: { top: 0.5, bottom: 0.5, left: 0.5, right: 0.5 } })
+      await writeFile(join(folder, `Payslip-${r.name.replace(/[^a-z0-9]+/gi, '-')}.pdf`), pdf)
+      count++
+    }
+    shell.openPath(folder)
+    return { ok: true, count, folder }
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : String(err), count, folder }
   } finally {
     win.destroy()
   }
