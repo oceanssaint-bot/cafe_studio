@@ -1,5 +1,5 @@
 import { formatZar, periodLabel } from './defaults'
-import { GLORIA_LOGO_DATAURL } from './logo'
+import { GLORIA_BRAND, brandCss, brandFontLink, brandHeader, type Brand } from './brand'
 import type { RoyaltyInvoice, StatementAccount } from './types'
 
 function esc(s: string): string {
@@ -16,11 +16,15 @@ function fmtDate(d: string): string {
 }
 
 /**
- * Renders a Gloria Jeans SA royalty TAX INVOICE in the company template:
- * company + customer header, line items (Royalties Fee + Marketing Fee with
- * Amount / VAT / Total), grand total and banking details.
+ * Renders a royalty TAX INVOICE in the active brand's identity: branded header,
+ * line items (Royalties Fee + Marketing Fee with Amount / VAT / Total), grand
+ * total and banking details.
  */
-export function renderRoyaltyInvoiceHtml(inv: RoyaltyInvoice, account: StatementAccount | null): string {
+export function renderRoyaltyInvoiceHtml(
+  inv: RoyaltyInvoice,
+  account: StatementAccount | null,
+  brand: Brand = GLORIA_BRAND
+): string {
   const r = inv
   const royVat = Math.round(r.royalty_fee * 0.15 * 100) / 100
   const mktVat = Math.round(r.marketing_fee * 0.15 * 100) / 100
@@ -29,30 +33,18 @@ export function renderRoyaltyInvoiceHtml(inv: RoyaltyInvoice, account: Statement
 
   return `<!doctype html><html lang="en"><head><meta charset="utf-8" />
 <title>Tax Invoice ${esc(invoiceNo)} — ${esc(r.storeName)}</title>
-<style>
-  :root{--brown:#4b2e2e;--accent:#8b5e34;--cream:#f7f3ee;--ink:#1f2937;--muted:#6b7280;--line:#e5e7eb;}
-  *{box-sizing:border-box;} body{font-family:'Segoe UI',system-ui,sans-serif;color:var(--ink);margin:0;padding:44px;background:#fff;}
-  .sheet{max-width:880px;margin:0 auto;}
-  .logo{height:62px;margin-bottom:12px;display:block;}
-  header{display:flex;justify-content:space-between;border-bottom:3px solid var(--accent);padding-bottom:16px;}
-  .co{font-size:12.5px;color:var(--muted);line-height:1.55;} .co b{color:var(--brown);font-size:16px;}
-  h1{color:var(--brown);font-size:24px;margin:0;text-align:right;} .meta{font-size:13px;color:var(--muted);text-align:right;margin-top:6px;line-height:1.6;}
-  .meta b{color:var(--ink);}
+${brandFontLink(brand)}
+<style>${brandCss(brand)}
   .cust{margin:22px 0;font-size:13.5px;line-height:1.55;}
-  .cust .lbl{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin-bottom:2px;}
-  table{width:100%;border-collapse:collapse;margin-top:8px;} th,td{padding:10px 14px;font-size:14px;text-align:left;}
-  thead th{background:var(--brown);color:var(--cream);font-weight:600;} th.num,td.num{text-align:right;font-variant-numeric:tabular-nums;}
-  .sect td{background:var(--cream);font-weight:700;color:var(--brown);font-size:12.5px;text-transform:uppercase;letter-spacing:.03em;}
-  tbody td{border-bottom:1px solid var(--line);}
-  tfoot td{border-top:2px solid var(--brown);font-weight:700;font-size:15px;color:var(--brown);}
-  .bank{margin-top:26px;font-size:12.5px;color:#4b3a2f;background:var(--cream);border-left:4px solid var(--accent);padding:12px 16px;border-radius:4px;line-height:1.6;}
-  .bank b{color:var(--brown);}
-  @media print{body{padding:0;} thead th,.sect td,.bank{-webkit-print-color-adjust:exact;print-color-adjust:exact;}}
+  .sect td{background:var(--surface);font-weight:700;color:var(--ink);font-size:12.5px;text-transform:uppercase;letter-spacing:.03em;}
+  .bank{margin-top:26px;font-size:12.5px;color:var(--ink);padding:12px 16px;line-height:1.6;}
+  .bank b{color:var(--ink);}
 </style></head><body><div class="sheet">
-  <header>
-    <div><img class="logo" src="${GLORIA_LOGO_DATAURL}" alt="Gloria Jean's" /><div class="co"><b>GLORIA JEANS SOUTH AFRICA (PTY) LTD</b><br>Reg No: 2019/311650/07 · VAT No: 4470291941<br>707 Currie Road, Windermere, Durban<br>Postnet Suite 223, Private Bag X10, Musgrave Road, 4062<br>admin@gloriajeanscoffee.co.za</div></div>
-    <div><h1>TAX INVOICE</h1><div class="meta">Invoice No: <b>${esc(invoiceNo)}</b><br>Invoice Date: <b>${esc(fmtDate(r.invoice_date))}</b><br>Period: ${esc(periodLabel(r.period))}</div></div>
-  </header>
+  ${brandHeader(
+    brand,
+    'Tax Invoice',
+    `Invoice No: <b>${esc(invoiceNo)}</b><br>Invoice Date: <b>${esc(fmtDate(r.invoice_date))}</b><br>Period: ${esc(periodLabel(r.period))}`
+  )}
 
   <div class="cust">
     <div class="lbl">Bill To</div>
@@ -74,9 +66,9 @@ export function renderRoyaltyInvoiceHtml(inv: RoyaltyInvoice, account: Statement
     </tfoot>
   </table>
 
-  <div class="bank">
+  <div class="bank panel">
     <b>Banking Details</b><br>
-    Gloria Jeans South Africa · First National Bank · Branch Code: 250 655 · Account Number: 62861307702<br>
+    ${esc(brand.bank.name)} · ${esc(brand.bank.bank)} · Branch Code: ${esc(brand.bank.branch)} · Account Number: ${esc(brand.bank.account)}<br>
     Reference: ${esc(account?.customer_code || r.storeName)} — ${esc(invoiceNo)}
   </div>
 </div></body></html>`

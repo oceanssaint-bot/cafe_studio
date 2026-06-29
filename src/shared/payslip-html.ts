@@ -1,13 +1,19 @@
 import { formatZar, periodLabel } from './defaults'
-import { GLORIA_LOGO_DATAURL } from './logo'
+import { GLORIA_BRAND, brandCss, brandFontLink, brandHeader, type Brand } from './brand'
 import type { Payslip, Staff } from './types'
 
 function esc(s: string): string {
   return String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
 }
 
-/** A BCEA-style payslip: employer + employee details, earnings, deductions, net pay. */
-export function renderPayslipHtml(p: Payslip, staff: Staff | null, storeName: string): string {
+/** A BCEA-style payslip in the active brand's identity: employer + employee
+ *  details, earnings, deductions, net pay. */
+export function renderPayslipHtml(
+  p: Payslip,
+  staff: Staff | null,
+  storeName: string,
+  brand: Brand = GLORIA_BRAND
+): string {
   const rows = (lines: { label: string; amount: number }[]): string =>
     lines
       .map((l) => `<tr><td>${esc(l.label)}</td><td class="num">${formatZar(l.amount)}</td></tr>`)
@@ -16,30 +22,22 @@ export function renderPayslipHtml(p: Payslip, staff: Staff | null, storeName: st
 
   return `<!doctype html><html lang="en"><head><meta charset="utf-8" />
 <title>Payslip — ${esc(p.staff_name)} — ${esc(p.period)}</title>
-<style>
-  :root{--brown:#4b2e2e;--accent:#8b5e34;--cream:#f7f3ee;--ink:#1f2937;--muted:#6b7280;--line:#e5e7eb;}
-  *{box-sizing:border-box;} body{font-family:'Segoe UI',system-ui,sans-serif;color:var(--ink);margin:0;padding:44px;background:#fff;}
-  .sheet{max-width:760px;margin:0 auto;}
-  header{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:3px solid var(--accent);padding-bottom:14px;}
-  .logo{height:54px;display:block;margin-bottom:8px;}
-  .co{font-size:12px;color:var(--muted);line-height:1.5;} .co b{color:var(--brown);font-size:14px;}
-  h1{color:var(--brown);font-size:22px;margin:0;text-align:right;} .meta{font-size:12.5px;color:var(--muted);text-align:right;margin-top:4px;}
+${brandFontLink(brand)}
+<style>${brandCss(brand)}
+  .sheet{max-width:760px;}
   .who{display:grid;grid-template-columns:1fr 1fr;gap:8px 24px;margin:18px 0;font-size:12.5px;}
-  .who .lbl{font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);}
   .who .val{color:var(--ink);font-weight:600;}
   .cols{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:8px;}
-  table{width:100%;border-collapse:collapse;} th,td{padding:7px 10px;font-size:13px;text-align:left;}
-  thead th{background:var(--brown);color:var(--cream);font-weight:600;} td.num,th.num{text-align:right;font-variant-numeric:tabular-nums;}
-  tbody td{border-bottom:1px solid var(--line);} tfoot td{border-top:2px solid var(--brown);font-weight:700;color:var(--brown);}
-  .net{margin-top:18px;display:flex;justify-content:space-between;align-items:center;background:var(--brown);color:var(--cream);padding:14px 18px;border-radius:6px;}
+  .net{margin-top:18px;display:flex;justify-content:space-between;align-items:center;padding:14px 18px;}
   .net .amt{font-size:24px;font-weight:800;}
   .foot{margin-top:22px;font-size:10.5px;color:var(--muted);border-top:1px solid var(--line);padding-top:8px;}
-  @media print{body{padding:0;} thead th,.net{-webkit-print-color-adjust:exact;print-color-adjust:exact;}}
 </style></head><body><div class="sheet">
-  <header>
-    <div><img class="logo" src="${GLORIA_LOGO_DATAURL}" alt="logo" /><div class="co"><b>${esc(storeName)}</b><br>707 Currie Road, Windermere, Durban<br>VAT 4470291941</div></div>
-    <div><h1>PAYSLIP</h1><div class="meta">Pay period: <b>${esc(periodLabel(p.period))}</b></div></div>
-  </header>
+  ${brandHeader(
+    brand,
+    'Payslip',
+    `Pay period: <b>${esc(periodLabel(p.period))}</b>`,
+    `<b>${esc(storeName)}</b><br>${esc(brand.address)}<br>VAT ${esc(brand.vatNo)}`
+  )}
 
   <div class="who">
     <div><div class="lbl">Employee</div><div class="val">${esc(p.staff_name)}</div></div>
@@ -63,7 +61,7 @@ export function renderPayslipHtml(p: Payslip, staff: Staff | null, storeName: st
     </table>
   </div>
 
-  <div class="net"><span>NET PAY</span><span class="amt">${formatZar(p.net)}</span></div>
+  <div class="net hero"><span>NET PAY</span><span class="amt">${formatZar(p.net)}</span></div>
 
   <p class="foot">
     Employer contributions (not deducted from you): UIF ${formatZar(p.uif_employer)} · SDL ${formatZar(p.sdl)}.

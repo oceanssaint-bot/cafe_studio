@@ -1,5 +1,5 @@
 import { formatZar } from './defaults'
-import { GLORIA_LOGO_DATAURL } from './logo'
+import { GLORIA_BRAND, brandCss, brandFontLink, brandHeader, type Brand } from './brand'
 import type { StatementView } from './types'
 
 function esc(s: string): string {
@@ -9,8 +9,8 @@ function esc(s: string): string {
     .replace(/>/g, '&gt;')
 }
 
-/** Renders a per-store Statement of Account as a self-contained HTML document. */
-export function renderStatementHtml(v: StatementView): string {
+/** Renders a per-store Statement of Account in the active brand's identity. */
+export function renderStatementHtml(v: StatementView, brand: Brand = GLORIA_BRAND): string {
   const acct = v.account
   const rows = v.lines
     .map(
@@ -28,31 +28,26 @@ export function renderStatementHtml(v: StatementView): string {
 
   return `<!doctype html><html lang="en"><head><meta charset="utf-8" />
 <title>Statement of Account — ${esc(v.storeName)} — ${esc(v.periodLabel)}</title>
-<style>
-  :root{--brown:#4b2e2e;--accent:#8b5e34;--cream:#f7f3ee;--ink:#1f2937;--muted:#6b7280;--line:#e5e7eb;}
-  *{box-sizing:border-box;} body{font-family:'Segoe UI',system-ui,sans-serif;color:var(--ink);margin:0;padding:40px;background:#fff;}
-  .sheet{max-width:920px;margin:0 auto;}
-  header{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:3px solid var(--accent);padding-bottom:16px;}
-  .logo{height:58px;margin-bottom:10px;display:block;}
-  .co{font-size:13px;color:var(--muted);line-height:1.5;} .co b{color:var(--brown);font-size:15px;}
-  h1{color:var(--brown);font-size:26px;margin:0 0 2px;} .period{color:var(--muted);font-size:15px;text-align:right;}
+${brandFontLink(brand)}
+<style>${brandCss(brand)}
+  .sheet{max-width:920px;}
+  h1{text-transform:none;}
+  .period{color:var(--muted);font-size:15px;text-align:right;}
   .parties{display:flex;justify-content:space-between;gap:24px;margin:22px 0;}
-  .cust{font-size:13.5px;line-height:1.5;} .cust .lbl{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);}
+  .cust{font-size:13.5px;line-height:1.5;}
   .summary{border:1px solid var(--line);border-radius:10px;padding:14px 18px;min-width:280px;}
   .summary h2{font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin:0 0 8px;}
   .summary .row{display:flex;justify-content:space-between;font-size:14px;padding:3px 0;}
-  .summary .bal{border-top:2px solid var(--brown);margin-top:6px;padding-top:8px;font-weight:700;color:var(--brown);font-size:16px;}
-  table{width:100%;border-collapse:collapse;margin-top:6px;} th,td{padding:9px 12px;font-size:13.5px;text-align:left;}
-  thead th{background:var(--brown);color:var(--cream);font-weight:600;} th.num,td.num{text-align:right;font-variant-numeric:tabular-nums;}
-  tbody tr.alt{background:var(--cream);} tbody td{border-bottom:1px solid var(--line);}
+  .summary .bal{border-top:2px solid var(--primary);margin-top:6px;padding-top:8px;font-weight:700;color:var(--ink);font-size:16px;}
   td:last-child{font-weight:600;}
   footer{margin-top:24px;color:#9ca3af;font-size:11px;border-top:1px solid var(--line);padding-top:12px;}
-  @media print{body{padding:0;} thead th{-webkit-print-color-adjust:exact;print-color-adjust:exact;}}
 </style></head><body><div class="sheet">
-  <header>
-    <div><img class="logo" src="${GLORIA_LOGO_DATAURL}" alt="Gloria Jean's" /><div class="co"><b>GLORIA JEANS SOUTH AFRICA (PTY) LTD</b><br>707 Currie Road, Windermere, Durban<br>Postnet Suite 223, Private Bag X10, Musgrave Road, 4062<br>admin@gloriajeanscoffee.co.za · VAT 4470291941</div></div>
-    <div><h1>Statement of Account</h1><div class="period">To ${esc(v.periodLabel || '')}</div></div>
-  </header>
+  ${brandHeader(
+    brand,
+    'Statement of Account',
+    `To ${esc(v.periodLabel || '')}`,
+    `<b>${esc(brand.legalName)}</b><br>${esc(brand.address)}<br>${esc(brand.postal)}<br>${esc(brand.email)} · VAT ${esc(brand.vatNo)}`
+  )}
   <div class="parties">
     <div class="cust">
       <div class="lbl">Account</div>

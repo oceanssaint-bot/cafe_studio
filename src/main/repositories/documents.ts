@@ -50,6 +50,15 @@ export function createDocument(input: {
   return getDocument(Number(info.lastInsertRowid))
 }
 
+/** Best-guess where AI-read figures belong, so the review pre-selects it. */
+function deriveDestination(fields: ExtractedFields): DocDestination {
+  if (fields.cash_role === 'till_slip' || fields.cash_role === 'payout_voucher') return 'cashup'
+  if (fields.kind === 'invoice') return 'purchases'
+  if (fields.kind === 'receipt') return 'cashup'
+  if (fields.turnover && !fields.purchases) return 'month'
+  return fields.purchases ? 'cashup' : 'month'
+}
+
 /** Stores extracted fields on a document and marks it ready for review. */
 export function applyExtraction(
   id: number,
@@ -62,7 +71,7 @@ export function applyExtraction(
       `UPDATE documents SET
          kind = ?, supplier = ?, doc_date = ?, period = ?, store_id = ?,
          sales = ?, purchases = ?, turnover = ?, vat = ?, currency = ?,
-         summary = ?, status = 'extracted', error = ''
+         summary = ?, destination = ?, status = 'extracted', error = ''
        WHERE id = ?`
     )
     .run(
@@ -77,6 +86,7 @@ export function applyExtraction(
       fields.vat,
       fields.currency || 'ZAR',
       fields.summary,
+      deriveDestination(fields),
       id
     )
   return getDocument(id)
@@ -103,6 +113,7 @@ export function applyDocument(input: ApplyDocumentInput): AppDocument {
   const flag = input.source_missing ? ' ⚠ no original slip (hand-keyed)' : ''
   const summary = input.summary + (flag && !input.summary.includes('hand-keyed') ? flag : '')
   const txnDate = input.doc_date || `${input.period}-01`
+  const desc = (input.description || input.supplier || 'Purchase') + flag
   const run = db.transaction(() => {
     // 1. Persist the reviewed values back onto the document.
     db.prepare(
@@ -134,12 +145,12 @@ export function applyDocument(input: ApplyDocumentInput): AppDocument {
         db.prepare(
           `INSERT INTO cash_payouts (store_id, period, txn_date, supplier, description, excl_vat, vat, incl_vat, kind, source_doc_id, created_at)
            VALUES (?,?,?,?,?,?,?,?, 'purchase', ?, ?)`
-        ).run(input.store_id, input.period, txnDate, input.supplier, input.description + flag, input.excl_vat || input.purchases - input.vat, input.vat, input.purchases, input.id, now())
+        ).run(input.store_id, input.period, txnDate, input.supplier, desc, input.excl_vat || input.purchases - input.vat, input.vat, input.purchases, input.id, now())
       } else if (input.destination === 'purchases' && input.purchases) {
         db.prepare(
           `INSERT INTO store_purchase_lines (store_id, period, txn_date, invoice_no, supplier, description, excl_vat, vat, incl_vat, source, created_at)
            VALUES (?,?,?,?,?,?,?,?,?, 'document', ?)`
-        ).run(input.store_id, input.period, txnDate, '', input.supplier, input.description + flag, input.excl_vat || input.purchases - input.vat, input.vat, input.purchases, now())
+        ).run(input.store_id, input.period, txnDate, '', input.supplier, desc, input.excl_vat || input.purchases - input.vat, input.vat, input.purchases, now())
       } else if (input.sales || input.purchases || input.turnover) {
         db.prepare(
           `INSERT INTO monthly_store_data
@@ -171,6 +182,23 @@ export function applyDocument(input: ApplyDocumentInput): AppDocument {
         const notes = task.notes ? `${task.notes}\n${line}` : line
         db.prepare(`UPDATE tasks SET notes = ? WHERE id = ?`).run(notes, input.task_id)
       }
+    }
+
+    // 4. Record it: drop the document into the file catalog so it shows in Records.
+    const doc = db.prepare(`SELECT filename, stored_path, kind FROM documents WHERE id = ?`).get(input.id) as
+      | { filename: string; stored_path: string; kind: string }
+      | undefined
+    if (doc) {
+      const storeName = input.store_id
+        ? ((db.prepare(`SELECT name FROM stores WHERE id = ?`).get(input.store_id) as { name: string } | undefined)?.name ?? '')
+        : ''
+      const catPath = doc.stored_path && doc.stored_path.length ? doc.stored_path : `document://${input.id}`
+      db.prepare(
+        `INSERT INTO file_catalog (path, rel_path, filename, department, store, period, doc_type, ext, size, sha256, modified, ingested, module, notes, created_at)
+         VALUES (?, ?, ?, 'Documents', ?, ?, ?, '', 0, '', ?, 1, 'document', ?, ?)
+         ON CONFLICT(path) DO UPDATE SET store = excluded.store, period = excluded.period,
+           doc_type = excluded.doc_type, notes = excluded.notes, ingested = 1`
+      ).run(catPath, doc.filename, input.supplier || doc.filename, storeName, input.period, doc.kind, txnDate, summary, now())
     }
   })
   run()
