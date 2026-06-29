@@ -81,6 +81,7 @@ import type {
   BackupResult,
   AppDocument,
   ApplyDocumentInput,
+  DocDestination,
   ApiKeyStatus,
   SheetPreview
 } from '../shared/types'
@@ -300,6 +301,8 @@ const api = {
       ipcRenderer.invoke('documents:reextract', id),
     apply: (input: ApplyDocumentInput): Promise<AppDocument> =>
       ipcRenderer.invoke('documents:apply', input),
+    addManual: (kind: AppDocument['kind'], destination: DocDestination): Promise<AppDocument> =>
+      ipcRenderer.invoke('documents:addManual', kind, destination),
     remove: (id: number): Promise<void> => ipcRenderer.invoke('documents:delete', id),
     preview: (id: number): Promise<SheetPreview | null> =>
       ipcRenderer.invoke('documents:preview', id),

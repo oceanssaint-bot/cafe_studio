@@ -186,6 +186,8 @@ export async function extractWithClaude(filePath: string, mime: string): Promise
             type: 'text',
             text:
               `Extract the financial details from this document for a coffee retail business in South Africa. ` +
+              `It may be a printed till slip, a supplier invoice, OR a HANDWRITTEN cash payout voucher/note — ` +
+              `read handwriting carefully and still return your best figures even if faint or untidy. ` +
               `Our stores are: ${storeNames}. ` +
               `If the document clearly relates to one of them, set store_name to that exact name; otherwise leave it empty. ` +
               `Use ZAR currency and report amounts as plain numbers (no symbols).`

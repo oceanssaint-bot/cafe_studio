@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { periodLabel, formatZar } from '../../../../shared/defaults'
-import type { AppDocument, Store, Task, SheetPreview } from '../../../../shared/types'
+import type { AppDocument, Store, Task, SheetPreview, DocDestination } from '../../../../shared/types'
 
 interface DocumentReviewProps {
   doc: AppDocument
@@ -20,6 +20,10 @@ interface FormState {
   doc_date: string
   summary: string
   task_id: string
+  destination: DocDestination
+  description: string
+  excl_vat: string
+  source_missing: boolean
 }
 
 function toForm(d: AppDocument): FormState {
@@ -33,7 +37,11 @@ function toForm(d: AppDocument): FormState {
     supplier: d.supplier,
     doc_date: d.doc_date,
     summary: d.summary,
-    task_id: d.task_id ? String(d.task_id) : ''
+    task_id: d.task_id ? String(d.task_id) : '',
+    destination: d.destination || 'month',
+    description: '',
+    excl_vat: '',
+    source_missing: !!d.source_missing
   }
 }
 
@@ -63,7 +71,7 @@ export default function DocumentReview({
     else setTasks([])
   }, [form.period])
 
-  function set<K extends keyof FormState>(key: K, value: string): void {
+  function set<K extends keyof FormState>(key: K, value: FormState[K]): void {
     setForm((f) => ({ ...f, [key]: value }))
   }
 
@@ -81,7 +89,11 @@ export default function DocumentReview({
         supplier: form.supplier,
         doc_date: form.doc_date,
         summary: form.summary,
-        task_id: form.task_id ? Number(form.task_id) : null
+        task_id: form.task_id ? Number(form.task_id) : null,
+        destination: form.destination,
+        description: form.description,
+        excl_vat: parseFloat(form.excl_vat) || 0,
+        source_missing: form.source_missing
       })
       onApplied()
     } finally {
@@ -154,6 +166,42 @@ export default function DocumentReview({
           </table>
         </div>
       )}
+
+      {/* Capture control: where to update + audit flag */}
+      <div className="mb-4 rounded-md border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-900/40">
+        <div className="grid gap-3 sm:grid-cols-2">
+          <Field label="Apply these figures to">
+            <select
+              value={form.destination}
+              onChange={(e) => set('destination', e.target.value as DocDestination)}
+              className={inputCls}
+            >
+              <option value="month">Store month totals (sales / purchases / turnover)</option>
+              <option value="cashup">Cash-up — petty-cash purchase</option>
+              <option value="purchases">Store purchases journal</option>
+            </select>
+          </Field>
+          {form.destination !== 'month' && (
+            <Field label="Description">
+              <input
+                value={form.description}
+                onChange={(e) => set('description', e.target.value)}
+                placeholder="e.g. Milk, Bread, Cleaning"
+                className={inputCls}
+              />
+            </Field>
+          )}
+        </div>
+        <label className="mt-3 flex items-start gap-2 text-sm text-amber-700 dark:text-amber-300">
+          <input
+            type="checkbox"
+            checked={form.source_missing}
+            onChange={(e) => set('source_missing', e.target.checked)}
+            className="mt-0.5"
+          />
+          <span>⚠ Original receipt missing — hand-keyed figures (it still applies, but is flagged for audit)</span>
+        </label>
+      </div>
 
       <div className="grid gap-4 sm:grid-cols-2">
         <Field label="Supplier">

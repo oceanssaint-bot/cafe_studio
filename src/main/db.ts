@@ -598,6 +598,15 @@ const migrations: Array<(database: Database.Database) => void> = [
       );
       CREATE INDEX IF NOT EXISTS idx_payslips ON payslips(store_id, period);
     `)
+  },
+  // v25: document capture control. `destination` = where Apply writes the figures
+  // (month aggregate / cash-up petty cash / store purchase journal). `source_missing`
+  // flags hand-keyed entries with no original slip — still applied, but auditable.
+  (database) => {
+    database.exec(`
+      ALTER TABLE documents ADD COLUMN destination TEXT NOT NULL DEFAULT 'month';
+      ALTER TABLE documents ADD COLUMN source_missing INTEGER NOT NULL DEFAULT 0;
+    `)
   }
 ]
 

@@ -59,6 +59,12 @@ export default function Documents(): JSX.Element {
     if (created.length > 0) setSelectedId(created[0].id)
   }
 
+  async function addManual(): Promise<void> {
+    const d = await window.gloria.documents.addManual('receipt', 'cashup')
+    await refresh()
+    setSelectedId(d.id)
+  }
+
   async function remove(id: number): Promise<void> {
     await window.gloria.documents.remove(id)
     setSelectedId((cur) => (cur === id ? null : cur))
@@ -78,15 +84,24 @@ export default function Documents(): JSX.Element {
             Upload receipts, invoices and spreadsheets — figures are read out and filled in for you.
           </p>
         </div>
-        <button
-          type="button"
-          onClick={upload}
-          disabled={uploading}
-          className="inline-flex items-center gap-2 rounded-md bg-gloria-accent px-4 py-2 text-sm font-medium text-white hover:bg-gloria-brown disabled:opacity-50"
-        >
-          {uploading && <Spinner />}
-          {uploading ? 'Reading…' : 'Upload files'}
-        </button>
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={addManual}
+            className="rounded-md border border-gloria-accent px-4 py-2 text-sm font-medium text-gloria-accent hover:bg-gloria-accent hover:text-white"
+          >
+            Add by hand
+          </button>
+          <button
+            type="button"
+            onClick={upload}
+            disabled={uploading}
+            className="inline-flex items-center gap-2 rounded-md bg-gloria-accent px-4 py-2 text-sm font-medium text-white hover:bg-gloria-brown disabled:opacity-50"
+          >
+            {uploading && <Spinner />}
+            {uploading ? 'Reading…' : 'Upload files'}
+          </button>
+        </div>
       </header>
 
       {uploading && (
@@ -146,6 +161,7 @@ export default function Documents(): JSX.Element {
                   >
                     <div className="flex items-center justify-between gap-2">
                       <span className="truncate text-sm font-medium text-slate-800 dark:text-slate-100">
+                        {d.source_missing ? '⚠ ' : ''}
                         {d.supplier || d.filename}
                       </span>
                       <span

@@ -1083,9 +1083,14 @@ export interface AppDocument {
   status: DocumentStatus
   error: string
   task_id: number | null
+  destination: DocDestination
+  source_missing: number // 0 | 1 — hand-keyed, no original slip
   created_at: string
   applied_at: string | null
 }
+
+/** Where applying a document writes its figures. */
+export type DocDestination = 'month' | 'cashup' | 'purchases'
 
 /** Structured fields the model (or local parser) extracts from a document. */
 export interface ExtractedFields {
@@ -1119,6 +1124,10 @@ export interface ApplyDocumentInput {
   doc_date: string
   summary: string
   task_id: number | null
+  destination: DocDestination
+  description: string // line description for cash-up / purchases rows
+  excl_vat: number
+  source_missing: boolean
 }
 
 export interface ApiKeyStatus {

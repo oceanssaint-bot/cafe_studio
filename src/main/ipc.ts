@@ -112,7 +112,8 @@ import {
   listDocuments,
   getDocument,
   applyDocument,
-  deleteDocument
+  deleteDocument,
+  createManualDocument
 } from './repositories/documents'
 import {
   uploadDocuments,
@@ -364,6 +365,9 @@ export function registerIpcHandlers(): void {
   ipcMain.handle('documents:upload', () => uploadDocuments())
   ipcMain.handle('documents:reextract', (_e, id: number) => reextractDocument(id))
   ipcMain.handle('documents:apply', (_e, input: ApplyDocumentInput) => applyDocument(input))
+  ipcMain.handle('documents:addManual', (_e, kind, destination) =>
+    createManualDocument({ kind, destination })
+  )
   ipcMain.handle('documents:delete', (_e, id: number) => deleteDocument(id))
   ipcMain.handle('documents:preview', (_e, id: number) => previewDocument(id))
   ipcMain.handle('documents:open', (_e, id: number) => openDocumentFile(id))

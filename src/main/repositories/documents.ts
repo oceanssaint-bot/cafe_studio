@@ -1,8 +1,23 @@
 import { getDatabase } from '../db'
-import type { AppDocument, ApplyDocumentInput, ExtractedFields } from '../../shared/types'
+import { currentPeriod } from '../../shared/defaults'
+import type { AppDocument, ApplyDocumentInput, DocDestination, ExtractedFields } from '../../shared/types'
 
 function now(): string {
   return new Date().toISOString()
+}
+
+/**
+ * Manual capture: a document with no file/AI, ready for the user to key figures
+ * in by hand. Flagged source_missing so it's auditable as a hand entry.
+ */
+export function createManualDocument(input: { kind: AppDocument['kind']; destination: DocDestination }): AppDocument {
+  const info = getDatabase()
+    .prepare(
+      `INSERT INTO documents (filename, stored_path, mime, kind, destination, source_missing, period, summary, status, created_at)
+       VALUES ('Manual entry', '', '', ?, ?, 1, ?, 'Hand-keyed — no original slip', 'extracted', ?)`
+    )
+    .run(input.kind, input.destination, currentPeriod(), now())
+  return getDocument(Number(info.lastInsertRowid))
 }
 
 export function listDocuments(): AppDocument[] {
@@ -85,13 +100,16 @@ export function deleteDocument(id: number): void {
  */
 export function applyDocument(input: ApplyDocumentInput): AppDocument {
   const db = getDatabase()
+  const flag = input.source_missing ? ' ⚠ no original slip (hand-keyed)' : ''
+  const summary = input.summary + (flag && !input.summary.includes('hand-keyed') ? flag : '')
+  const txnDate = input.doc_date || `${input.period}-01`
   const run = db.transaction(() => {
     // 1. Persist the reviewed values back onto the document.
     db.prepare(
       `UPDATE documents SET
          store_id = ?, period = ?, sales = ?, purchases = ?, turnover = ?,
          vat = ?, supplier = ?, doc_date = ?, summary = ?, task_id = ?,
-         status = 'applied', applied_at = ?
+         destination = ?, source_missing = ?, status = 'applied', applied_at = ?
        WHERE id = ?`
     ).run(
       input.store_id,
@@ -102,40 +120,54 @@ export function applyDocument(input: ApplyDocumentInput): AppDocument {
       input.vat,
       input.supplier,
       input.doc_date,
-      input.summary,
+      summary,
       input.task_id,
+      input.destination,
+      input.source_missing ? 1 : 0,
       now(),
       input.id
     )
 
-    // 2. Accumulate figures into the store's month (invoices in a month sum).
-    if (input.store_id && input.period && (input.sales || input.purchases || input.turnover)) {
-      db.prepare(
-        `INSERT INTO monthly_store_data
-           (store_id, period, sales, purchases, turnover, notes, updated_at)
-         VALUES (@store_id, @period, @sales, @purchases, @turnover, '', @ts)
-         ON CONFLICT(store_id, period) DO UPDATE SET
-           sales = sales + excluded.sales,
-           purchases = purchases + excluded.purchases,
-           turnover = turnover + excluded.turnover,
-           updated_at = excluded.updated_at`
-      ).run({
-        store_id: input.store_id,
-        period: input.period,
-        sales: input.sales,
-        purchases: input.purchases,
-        turnover: input.turnover,
-        ts: now()
-      })
+    // 2. Route the figures to the chosen destination.
+    if (input.store_id && input.period) {
+      if (input.destination === 'cashup' && input.purchases) {
+        db.prepare(
+          `INSERT INTO cash_payouts (store_id, period, txn_date, supplier, description, excl_vat, vat, incl_vat, kind, source_doc_id, created_at)
+           VALUES (?,?,?,?,?,?,?,?, 'purchase', ?, ?)`
+        ).run(input.store_id, input.period, txnDate, input.supplier, input.description + flag, input.excl_vat || input.purchases - input.vat, input.vat, input.purchases, input.id, now())
+      } else if (input.destination === 'purchases' && input.purchases) {
+        db.prepare(
+          `INSERT INTO store_purchase_lines (store_id, period, txn_date, invoice_no, supplier, description, excl_vat, vat, incl_vat, source, created_at)
+           VALUES (?,?,?,?,?,?,?,?,?, 'document', ?)`
+        ).run(input.store_id, input.period, txnDate, '', input.supplier, input.description + flag, input.excl_vat || input.purchases - input.vat, input.vat, input.purchases, now())
+      } else if (input.sales || input.purchases || input.turnover) {
+        db.prepare(
+          `INSERT INTO monthly_store_data
+             (store_id, period, sales, purchases, turnover, notes, updated_at)
+           VALUES (@store_id, @period, @sales, @purchases, @turnover, '', @ts)
+           ON CONFLICT(store_id, period) DO UPDATE SET
+             sales = sales + excluded.sales,
+             purchases = purchases + excluded.purchases,
+             turnover = turnover + excluded.turnover,
+             updated_at = excluded.updated_at`
+        ).run({
+          store_id: input.store_id,
+          period: input.period,
+          sales: input.sales,
+          purchases: input.purchases,
+          turnover: input.turnover,
+          ts: now()
+        })
+      }
     }
 
     // 3. Append a summary note to the chosen month-end task.
-    if (input.task_id && input.summary) {
+    if (input.task_id && summary) {
       const task = db.prepare(`SELECT notes FROM tasks WHERE id = ?`).get(input.task_id) as
         | { notes: string }
         | undefined
       if (task) {
-        const line = `[${input.supplier || 'Document'}] ${input.summary}`
+        const line = `[${input.supplier || 'Document'}] ${summary}`
         const notes = task.notes ? `${task.notes}\n${line}` : line
         db.prepare(`UPDATE tasks SET notes = ? WHERE id = ?`).run(notes, input.task_id)
       }
