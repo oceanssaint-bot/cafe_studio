@@ -2,7 +2,6 @@ import { getDatabase } from '../db'
 import { periodLabel } from '../../shared/defaults'
 import type { RoyaltyInvoice, RoyaltyView, RoyaltyGenerateSummary } from '../../shared/types'
 
-const MARKETING_RATE = 2.5
 const VAT_RATE = 0.15
 
 function now(): string {
@@ -30,7 +29,7 @@ export function generateRoyalties(period?: string): RoyaltyGenerateSummary {
   const db = getDatabase()
   const rows = db
     .prepare(
-      `SELECT d.store_id, d.period, d.turnover, s.royalty_rate AS rate
+      `SELECT d.store_id, d.period, d.turnover, s.royalty_rate AS rate, s.marketing_rate AS mrate
        FROM monthly_store_data d
        JOIN stores s ON s.id = d.store_id AND s.archived = 0
        WHERE d.turnover > 0 ${period ? 'AND d.period = ?' : ''}`
@@ -40,6 +39,7 @@ export function generateRoyalties(period?: string): RoyaltyGenerateSummary {
     period: string
     turnover: number
     rate: number
+    mrate: number
   }>
 
   const existing = db.prepare(
@@ -65,7 +65,7 @@ export function generateRoyalties(period?: string): RoyaltyGenerateSummary {
     for (const r of rows) {
       const rate = r.rate || 8
       const royalty_fee = round2(r.turnover * (rate / 100))
-      const marketing_fee = round2(r.turnover * (MARKETING_RATE / 100))
+      const marketing_fee = round2(r.turnover * ((r.mrate || 0) / 100))
       const vat = round2((royalty_fee + marketing_fee) * VAT_RATE)
       const total_incl = round2(royalty_fee + marketing_fee + vat)
       totalIncl += total_incl
@@ -210,4 +210,8 @@ export function setRoyaltyInvoiceNo(id: number, invoiceNo: string): void {
 
 export function setStoreRoyaltyRate(storeId: number, rate: number): void {
   getDatabase().prepare(`UPDATE stores SET royalty_rate = ? WHERE id = ?`).run(rate, storeId)
+}
+
+export function setStoreMarketingRate(storeId: number, rate: number): void {
+  getDatabase().prepare(`UPDATE stores SET marketing_rate = ? WHERE id = ?`).run(rate, storeId)
 }

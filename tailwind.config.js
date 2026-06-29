@@ -6,10 +6,11 @@ export default {
     extend: {
       colors: {
         gloria: {
-          // Gloria Jean's brand-ish palette
-          brown: '#4b2e2e',
-          accent: '#8b5e34',
-          cream: '#f7f3ee'
+          // Office-mode driven (CSS vars set per data-office): Store = warm brown +
+          // GJ Orange; Head Office = charcoal + Tasty Teal. Falls back to brand brown.
+          brown: 'rgb(var(--gj-brown) / <alpha-value>)',
+          accent: 'rgb(var(--gj-accent) / <alpha-value>)',
+          cream: 'rgb(var(--gj-cream) / <alpha-value>)'
         }
       }
     }

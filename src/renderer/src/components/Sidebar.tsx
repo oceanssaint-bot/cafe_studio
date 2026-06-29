@@ -13,6 +13,10 @@ export default function Sidebar({ active, onSelect }: SidebarProps): JSX.Element
   return (
     <aside className="flex w-60 shrink-0 flex-col bg-gloria-brown text-gloria-cream">
       <div className="px-5 pb-3 pt-6">
+        <div className="mb-2 inline-flex items-center gap-2 rounded-full bg-gloria-accent px-3 py-1 text-[11px] font-bold uppercase tracking-[0.12em] text-white shadow">
+          <span className="h-1.5 w-1.5 rounded-full bg-white/90" />
+          {mode === 'store' ? 'Store' : 'Head Office'}
+        </div>
         <h1 className="text-lg font-semibold leading-tight">
           {mode === 'store' ? 'Oceans Mall' : 'Franchise Office'}
         </h1>

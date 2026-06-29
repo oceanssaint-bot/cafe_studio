@@ -45,8 +45,8 @@ export default function Royalties(): JSX.Element {
       <header className="mb-5">
         <h2 className="text-2xl font-semibold text-gloria-brown dark:text-gloria-cream">Royalties</h2>
         <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-          Auto-calculated from each store’s turnover — royalty (8% / Pavilion 6%) + 2.5% marketing +
-          15% VAT. Toggle Paid as franchisees settle.
+          Auto-calculated from each store’s turnover at its own arrangement (royalty %, plus a
+          marketing fee only where the store’s deal includes one) + 15% VAT. Toggle Paid as franchisees settle.
         </p>
       </header>
 

@@ -241,6 +241,8 @@ const api = {
       ipcRenderer.invoke('royalty:setInvoiceNo', id, no),
     setRate: (storeId: number, rate: number): Promise<void> =>
       ipcRenderer.invoke('royalty:setRate', storeId, rate),
+    setMarketingRate: (storeId: number, rate: number): Promise<void> =>
+      ipcRenderer.invoke('royalty:setMarketingRate', storeId, rate),
     pending: (): Promise<PendingInvoice[]> => ipcRenderer.invoke('royalty:pending'),
     approvedUnsent: (): Promise<PendingInvoice[]> => ipcRenderer.invoke('royalty:approvedUnsent'),
     exportApproved: (): Promise<BatchExportSummary> => ipcRenderer.invoke('royalty:exportApproved'),

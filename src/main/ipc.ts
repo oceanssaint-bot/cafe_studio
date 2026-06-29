@@ -28,6 +28,7 @@ import {
   setRoyaltyPaid,
   setRoyaltyInvoiceNo,
   setStoreRoyaltyRate,
+  setStoreMarketingRate,
   listPendingInvoices,
   setRoyaltyApproved,
   approveAllRoyalties,
@@ -231,6 +232,9 @@ export function registerIpcHandlers(): void {
   ipcMain.handle('royalty:setInvoiceNo', (_e, id: number, no: string) => setRoyaltyInvoiceNo(id, no))
   ipcMain.handle('royalty:setRate', (_e, storeId: number, rate: number) =>
     setStoreRoyaltyRate(storeId, rate)
+  )
+  ipcMain.handle('royalty:setMarketingRate', (_e, storeId: number, rate: number) =>
+    setStoreMarketingRate(storeId, rate)
   )
   ipcMain.handle('royalty:pending', () => listPendingInvoices())
   ipcMain.handle('royalty:approvedUnsent', () => listApprovedUnsent())

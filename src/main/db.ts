@@ -607,6 +607,12 @@ const migrations: Array<(database: Database.Database) => void> = [
       ALTER TABLE documents ADD COLUMN destination TEXT NOT NULL DEFAULT 'month';
       ALTER TABLE documents ADD COLUMN source_missing INTEGER NOT NULL DEFAULT 0;
     `)
+  },
+  // v26: per-store marketing fee. Royalty arrangements differ per store — most pay
+  // the royalty % only; some add a 2.5% marketing fee. `marketing_rate` (percent)
+  // replaces the old blanket 2.5%, so each store bills exactly like its real invoice.
+  (database) => {
+    database.exec(`ALTER TABLE stores ADD COLUMN marketing_rate REAL NOT NULL DEFAULT 0;`)
   }
 ]
 

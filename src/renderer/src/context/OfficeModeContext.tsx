@@ -18,6 +18,7 @@ export function OfficeModeProvider({ children }: { children: ReactNode }): JSX.E
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, mode)
+    document.documentElement.setAttribute('data-office', mode)
   }, [mode])
 
   const setMode = (m: OfficeMode): void => setModeState(m)
